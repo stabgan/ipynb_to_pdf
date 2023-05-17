@@ -16,6 +16,8 @@ Ensure you have Python 3.11 or later installed on your system. You can check you
 ```
 python3 --version
 ```
+<b>P.s. I have used v3.11 but it will probably work with older versions of python also.</b>
+
 ### Installation
 
 Clone the repository:
