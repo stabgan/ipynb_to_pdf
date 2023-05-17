@@ -32,6 +32,7 @@ Run the shell script ipynb_to_pdf.sh:
 ./ipynb_to_pdf.sh
 ```
 The shell script will handle the creation and activation of the virtual environment, install the necessary dependencies, and run the application.
+You can create a shortcut of this .sh script to your desktop, and use it as a desktop application
 
 ### Usage
 
