@@ -2,6 +2,8 @@
 ![Python Version](https://img.shields.io/badge/python-3.11-blue)
 ![Repo Size](https://img.shields.io/github/languages/code-size/stabgan/ipynb_to_pdf)
 ![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)
+![Build](https://github.com/stabgan/ipynb_to_pdf/actions/workflows/python-app.yml/badge.svg)
+
 
 `ipynb_to_pdf` is a desktop application developed using Python and PyQt5 to convert multiple Jupyter notebooks (.ipynb) files to PDF. You can select the extraction location, making the conversion process simple and efficient.
 
