@@ -1,6 +1,5 @@
 # Jupyter Notebook (.ipynb) to PDF converter
 ![Python Version](https://img.shields.io/badge/python-3.11-blue)
-<img alt="GitHub" src="https://img.shields.io/github/license/stabgan/ipynb_to_pdf">
 ![Repo Size](https://img.shields.io/github/languages/code-size/stabgan/ipynb_to_pdf)
 ![Contributions Welcome](https://img.shields.io/badge/contributions-welcome-brightgreen)
 
