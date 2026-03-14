@@ -19,7 +19,7 @@ The interface is a single window with three buttons (select files, select output
 | 📓 | jupyter nbconvert | Notebook → PDF conversion (via subprocess) |
 | 📄 | LaTeX | Required by nbconvert's PDF pipeline |
 
-Single-file app — `main.py` (~150 lines).
+Single-file app — `main.py` (~160 lines).
 
 ## 📦 Dependencies
 
@@ -48,7 +48,7 @@ chmod +x ipynb_to_pdf.sh
 ## ⚠️ Known Issues
 
 - PyQt5 is no longer actively developed (PyQt6 is current). Wheels may not build on newer Python versions or Apple Silicon without extra steps.
-- LaTeX must be installed system-wide. If missing, nbconvert will fail — the app now surfaces this as a clear error dialog instead of crashing silently.
+- LaTeX must be installed system-wide. If missing, nbconvert will fail — the app surfaces this as a clear error dialog instead of crashing silently.
 - No automated tests beyond flake8 linting in CI.
 
 ## 📄 License

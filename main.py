@@ -1,3 +1,4 @@
+import os
 import sys
 import shutil
 import logging
@@ -9,8 +10,10 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import QThread, pyqtSignal
 import subprocess
 
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 logging.basicConfig(
-    filename="error_log.txt",
+    filename=os.path.join(_SCRIPT_DIR, "error_log.txt"),
     level=logging.ERROR,
     format="%(asctime)s %(levelname)s: %(message)s",
 )
@@ -27,14 +30,23 @@ class ConversionThread(QThread):
         super().__init__()
         self.files = files
         self.output_dir = output_dir
+        self._abort = False
+
+    def abort(self):
+        """Request the thread to stop after the current file."""
+        self._abort = True
 
     def run(self):
         for file in self.files:
+            if self._abort:
+                self.output.emit("Conversion cancelled.")
+                break
             try:
                 process = subprocess.Popen(
                     [
                         "jupyter", "nbconvert",
                         "--to", "pdf",
+                        "--no-input",
                         "--output-dir", self.output_dir,
                         file,
                     ],
@@ -64,6 +76,7 @@ class MyApp(QWidget):
         super().__init__()
         self.files = []
         self.output_dir = ""
+        self._thread = None
         self._init_ui()
 
     def _init_ui(self):
@@ -157,6 +170,15 @@ class MyApp(QWidget):
     def _on_completed(self):
         self.output_box.append("Conversion completed!")
         self.convert_btn.setEnabled(True)
+
+    # ── cleanup ───────────────────────────────────────────────────────
+
+    def closeEvent(self, event):
+        """Stop the background thread gracefully when the window closes."""
+        if self._thread is not None and self._thread.isRunning():
+            self._thread.abort()
+            self._thread.wait(5000)
+        event.accept()
 
 
 if __name__ == "__main__":
