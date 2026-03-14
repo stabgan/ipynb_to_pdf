@@ -1,26 +1,11 @@
 import sys
-import shutil
-import logging
-
-from PyQt5.QtWidgets import (
-    QApplication, QWidget, QPushButton, QFileDialog,
-    QVBoxLayout, QTextEdit, QMessageBox,
-)
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QFileDialog, QVBoxLayout, QTextEdit
 from PyQt5.QtCore import QThread, pyqtSignal
 import subprocess
 
-logging.basicConfig(
-    filename="error_log.txt",
-    level=logging.ERROR,
-    format="%(asctime)s %(levelname)s: %(message)s",
-)
-
 
 class ConversionThread(QThread):
-    """Runs jupyter nbconvert in a background thread."""
-
     output = pyqtSignal(str)
-    error = pyqtSignal(str)
     completed = pyqtSignal()
 
     def __init__(self, files, output_dir):
@@ -30,62 +15,39 @@ class ConversionThread(QThread):
 
     def run(self):
         for file in self.files:
-            try:
-                process = subprocess.Popen(
-                    [
-                        "jupyter", "nbconvert",
-                        "--to", "pdf",
-                        "--output-dir", self.output_dir,
-                        file,
-                    ],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                )
-                for line in iter(process.stdout.readline, b""):
-                    self.output.emit(line.decode("utf-8", errors="replace"))
-                process.wait()
-                if process.returncode != 0:
-                    self.error.emit(
-                        f"nbconvert exited with code {process.returncode} for {file}"
-                    )
-            except FileNotFoundError:
-                self.error.emit(
-                    "jupyter is not installed or not on PATH. "
-                    "Install it with: pip install jupyter"
-                )
-                return
-            except Exception as exc:
-                self.error.emit(f"Unexpected error converting {file}: {exc}")
-        self.completed.emit()
+            process = subprocess.Popen(['jupyter', 'nbconvert', '--to', 'pdf', '--output-dir', self.output_dir, file], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            for line in iter(process.stdout.readline, b''):
+                self.output.emit(line.decode('utf-8'))
+        self.completed.emit()  # Emit the completed signal when done
 
 
 class MyApp(QWidget):
     def __init__(self):
         super().__init__()
-        self.files = []
-        self.output_dir = ""
-        self._init_ui()
+        self.initUI()
 
-    def _init_ui(self):
-        self.setWindowTitle("Jupyter Notebook → PDF Converter")
-        self.setMinimumSize(520, 380)
+    def initUI(self):
+        self.setWindowTitle('Convert Jupyter notebook to pdf')
 
+        # Create a QVBoxLayout instance
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        select_files_btn = QPushButton("Select .ipynb files", self)
-        select_files_btn.clicked.connect(self._select_files)
+        # Create QPushButton instances
+        select_files_btn = QPushButton('Select .ipynb files', self)
+        select_files_btn.clicked.connect(self.select_files)
 
-        select_output_dir_btn = QPushButton("Select output directory", self)
-        select_output_dir_btn.clicked.connect(self._select_output_dir)
+        select_output_dir_btn = QPushButton('Select output directory', self)
+        select_output_dir_btn.clicked.connect(self.select_output_dir)
 
-        self.convert_btn = QPushButton("Convert to PDF", self)
-        self.convert_btn.clicked.connect(self._convert)
-        self.convert_btn.setEnabled(False)
+        self.convert_btn = QPushButton('Convert to .pdf', self)
+        self.convert_btn.clicked.connect(self.convert)
+        self.convert_btn.setEnabled(False)  # Disable until files are selected
 
         self.output_box = QTextEdit()
         self.output_box.setReadOnly(True)
 
+        # Add widgets to the layout
         layout.addWidget(select_files_btn)
         layout.addWidget(select_output_dir_btn)
         layout.addWidget(self.convert_btn)
@@ -93,78 +55,39 @@ class MyApp(QWidget):
 
         self.show()
 
-    # ── file / dir selection ──────────────────────────────────────────
-
-    def _select_files(self):
-        files, _ = QFileDialog.getOpenFileNames(
-            self,
-            "Select one or more .ipynb files",
-            "",
-            "Jupyter Notebooks (*.ipynb);;All Files (*)",
-        )
+    def select_files(self):
+        options = QFileDialog.Options()
+        options |= QFileDialog.ReadOnly
+        files, _ = QFileDialog.getOpenFileNames(self, "Select one or more files to open", "",
+                                                "Jupyter Notebooks (*.ipynb);;All Files (*)", options=options)
         if files:
             self.files = files
-            self.output_box.append(f"Selected {len(files)} file(s).")
-            self._update_convert_btn()
+            self.convert_btn.setEnabled(True)  # Enable the convert button
 
-    def _select_output_dir(self):
-        output_dir = QFileDialog.getExistingDirectory(
-            self, "Select output directory", ""
-        )
+    def select_output_dir(self):
+        options = QFileDialog.Options()
+        options |= QFileDialog.ReadOnly
+        output_dir = QFileDialog.getExistingDirectory(self, "Select output directory", "", options=options)
         if output_dir:
             self.output_dir = output_dir
-            self.output_box.append(f"Output directory: {output_dir}")
-            self._update_convert_btn()
 
-    def _update_convert_btn(self):
-        self.convert_btn.setEnabled(bool(self.files and self.output_dir))
+    def convert(self):
+        if hasattr(self, 'files') and hasattr(self, 'output_dir'):
+            self.thread = ConversionThread(self.files, self.output_dir)
+            self.thread.output.connect(self.output_box.append)
+            self.thread.completed.connect(self.on_completed)  # Connect the completed signal to on_completed slot
+            self.thread.start()
 
-    # ── conversion ────────────────────────────────────────────────────
-
-    def _convert(self):
-        if not self.files:
-            QMessageBox.warning(self, "No files", "Please select .ipynb files first.")
-            return
-        if not self.output_dir:
-            QMessageBox.warning(
-                self, "No output directory", "Please select an output directory first."
-            )
-            return
-
-        # Check that jupyter is available
-        if shutil.which("jupyter") is None:
-            QMessageBox.critical(
-                self,
-                "jupyter not found",
-                "The 'jupyter' command was not found on PATH.\n"
-                "Install it with:  pip install jupyter",
-            )
-            return
-
-        self.convert_btn.setEnabled(False)
-        self.output_box.append("Starting conversion…")
-
-        self._thread = ConversionThread(self.files, self.output_dir)
-        self._thread.output.connect(self.output_box.append)
-        self._thread.error.connect(self._on_error)
-        self._thread.completed.connect(self._on_completed)
-        self._thread.start()
-
-    def _on_error(self, msg):
-        self.output_box.append(f"ERROR: {msg}")
-        logging.error(msg)
-
-    def _on_completed(self):
+    def on_completed(self):
         self.output_box.append("Conversion completed!")
-        self.convert_btn.setEnabled(True)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     try:
         app = QApplication(sys.argv)
-        window = MyApp()
+        ex = MyApp()
         sys.exit(app.exec_())
-    except Exception as exc:
-        logging.exception("Fatal error")
-        print(f"Fatal error: {exc}", file=sys.stderr)
-        sys.exit(1)
+    except Exception as e:
+        with open('error_log.txt', 'w') as f:
+            f.write(str(e))
+
